@@ -65,7 +65,7 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 The application will be available at:
 
 - Frontend: http://localhost:8000
-- API: http://localhost:8000/api/data
+- API: http://localhost:8000/api/items
 - Health check: http://localhost:8000/api/health
 
 ## Development Workflow
@@ -94,7 +94,8 @@ FastAPI will automatically serve the built SPA from `frontend/build/`.
 
 ## API Endpoints
 
-- `GET /api/data` - Returns sample data with items
+- `GET /api/items` - Returns all items
+- `POST /api/items` - Creates a new item
 - `GET /api/health` - Health check endpoint
 
 ## Features

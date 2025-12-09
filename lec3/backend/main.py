@@ -1,5 +1,22 @@
-from fastapi import FastAPI
+import sys
+from pathlib import Path
+
+# Add parent directory to path to allow imports when running directly
+if __name__ == "__main__":
+    backend_dir = Path(__file__).parent
+    parent_dir = backend_dir.parent
+    if str(parent_dir) not in sys.path:
+        sys.path.insert(0, str(parent_dir))
+
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from backend.database import get_db
+from backend.models import ItemModel
 
 app = FastAPI(
     title="Building with LLM",
@@ -16,19 +33,47 @@ app.add_middleware(
 )
 
 
-@app.get("/api/data")
-async def get_data():
+# Pydantic models
+class ItemCreate(BaseModel):
+    """Request model for creating an item"""
+
+    name: str
+    description: str
+
+
+class Item(BaseModel):
+    """Response model for an item"""
+
+    id: int
+    name: str
+    description: str
+
+    class Config:
+        from_attributes = True
+
+
+@app.get("/api/items")
+async def get_data(db: AsyncSession = Depends(get_db)):
     """Simple GET endpoint that returns sample data"""
+    result = await db.execute(select(ItemModel))
+    items = result.scalars().all()
+
     return {
         "message": "Hello from the API!",
-        "items": [
-            {"id": 1, "name": "Item 1", "description": "This is the first item. Yay"},
-            {"id": 2, "name": "Item 2", "description": "This is the second item"},
-            {"id": 3, "name": "Item 3", "description": "This is the third item"},
-            {"id": 4, "name": "Item 4", "description": "This is the fourth item"},
-        ],
-        "count": 4,
+        "items": [Item.model_validate(item).model_dump() for item in items],
+        "count": len(items),
     }
+
+
+@app.post("/api/items", response_model=Item)
+async def create_item(item: ItemCreate, db: AsyncSession = Depends(get_db)):
+    """POST endpoint to create a new item"""
+    new_item = ItemModel(name=item.name, description=item.description)
+    db.add(new_item)
+    await db.commit()
+    await db.refresh(new_item)
+
+    return Item.model_validate(new_item)
 
 
 if __name__ == "__main__":
