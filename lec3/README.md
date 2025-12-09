@@ -7,37 +7,35 @@ This project demonstrates a FastAPI backend serving a SvelteKit Single Page Appl
 ```
 lec3/
 ├── backend/
-│   └── main.py          # FastAPI application
+│   ├── main.py          # FastAPI application
+│   ├── models.py        # SQLAlchemy database models
+│   └── database.py     # Database connection and session management
 ├── frontend/            # SvelteKit application
 │   ├── src/
 │   │   └── routes/
 │   │       ├── +page.svelte
 │   │       └── +layout.ts
 │   └── package.json
-└── docker-compose.yml   # PostgreSQL database (optional)
+├── alembic/             # Database migrations
+│   ├── versions/        # Migration files
+│   └── env.py           # Alembic environment configuration
+├── alembic.ini          # Alembic configuration
+└── docker-compose.yml   # PostgreSQL database
 ```
 
 ## Setup Instructions
 
-### 1. Install Frontend Dependencies
+### 1. Start the Database
+
+Start the PostgreSQL database using Docker Compose:
 
 ```bash
-cd frontend
-npm install
+docker-compose up -d
 ```
 
-This will install all required dependencies including `@sveltejs/adapter-static` for building the SPA.
+This will start a PostgreSQL database with pgvector extension on port 5432.
 
-### 2. Build the Frontend
-
-```bash
-cd frontend
-npm run build
-```
-
-This creates a static build in `frontend/build/` that FastAPI will serve.
-
-### 3. Install Backend Dependencies
+### 2. Install Backend Dependencies
 
 From the project root (where `pyproject.toml` is located):
 
@@ -49,7 +47,35 @@ uv sync
 pip install -e .
 ```
 
-### 4. Run the Backend
+### 3. Run Database Migrations
+
+Run Alembic migrations to set up the database schema:
+
+```bash
+alembic upgrade head
+```
+
+This will create the necessary database tables (e.g., `items` table).
+
+### 4. Install Frontend Dependencies
+
+```bash
+cd frontend
+npm install
+```
+
+This will install all required dependencies including `@sveltejs/adapter-static` for building the SPA.
+
+### 5. Build the Frontend
+
+```bash
+cd frontend
+npm run build
+```
+
+This creates a static build in `frontend/build/` that FastAPI will serve.
+
+### 6. Run the Backend
 
 ```bash
 cd backend
@@ -66,7 +92,6 @@ The application will be available at:
 
 - Frontend: http://localhost:8000
 - API: http://localhost:8000/api/items
-- Health check: http://localhost:8000/api/health
 
 ## Development Workflow
 
@@ -94,9 +119,11 @@ FastAPI will automatically serve the built SPA from `frontend/build/`.
 
 ## API Endpoints
 
-- `GET /api/items` - Returns all items
+- `GET /api/items` - Returns all items with a message and count
+  - Response: `{ "message": "Hello from the API!", "items": [...], "count": N }`
 - `POST /api/items` - Creates a new item
-- `GET /api/health` - Health check endpoint
+  - Request body: `{ "name": string, "description": string }`
+  - Response: `{ "id": int, "name": string, "description": string }`
 
 ## Features
 
