@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -44,12 +44,11 @@ class ItemCreate(BaseModel):
 class Item(BaseModel):
     """Response model for an item"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: str
-
-    class Config:
-        from_attributes = True
 
 
 @app.get("/api/items")
@@ -79,4 +78,4 @@ async def create_item(item: ItemCreate, db: AsyncSession = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000)
