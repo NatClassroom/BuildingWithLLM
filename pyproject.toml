@@ -10,4 +10,5 @@ dependencies = [
     "sqlalchemy==2.0.39",
     "alembic==1.17.2",
     "greenlet==3.3.0",
+    "pgvector>=0.3.0",
 ]
