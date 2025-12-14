@@ -11,7 +11,7 @@ from alembic import context
 # access to the values within the .ini file in use.
 config = context.config
 config.set_main_option(
-    "sqlalchemy.url", "postgresql+asyncpg://username:pass123@localhost:5432/llm"
+    "sqlalchemy.url", "postgresql+asyncpg://username:pass123@localhost:5433/llm"
 )
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

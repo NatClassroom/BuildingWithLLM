@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import DeclarativeBase
 
 # Database URL - matches the one in alembic/env.py
-DATABASE_URL = "postgresql+asyncpg://username:pass123@localhost:5432/llm"
+DATABASE_URL = "postgresql+asyncpg://username:pass123@localhost:5433/llm"
 
 # Create async engine
 engine = create_async_engine(
