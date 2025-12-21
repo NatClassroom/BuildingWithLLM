@@ -54,7 +54,19 @@
       });
 
       if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+        let errorMessage = `Upload failed: ${uploadResponse.statusText}`;
+        try {
+          const errorData = await uploadResponse.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          const errorText = await uploadResponse.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const uploadData = await uploadResponse.json();
@@ -75,7 +87,19 @@
       });
 
       if (!embedResponse.ok) {
-        throw new Error(`Embedding failed: ${embedResponse.statusText}`);
+        let errorMessage = `Embedding failed: ${embedResponse.statusText}`;
+        try {
+          const errorData = await embedResponse.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          const errorText = await embedResponse.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const embedData = await embedResponse.json();
@@ -94,7 +118,19 @@
       });
 
       if (!storeResponse.ok) {
-        throw new Error(`Storage failed: ${storeResponse.statusText}`);
+        let errorMessage = `Storage failed: ${storeResponse.statusText}`;
+        try {
+          const errorData = await storeResponse.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          const errorText = await storeResponse.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       storedDocuments = await storeResponse.json();
@@ -132,7 +168,21 @@
       });
 
       if (!searchResponse.ok) {
-        throw new Error(`Search failed: ${searchResponse.statusText}`);
+        // Try to parse error response for detailed message
+        let errorMessage = `Search failed: ${searchResponse.statusText}`;
+        try {
+          const errorData = await searchResponse.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          // If JSON parsing fails, use the response text
+          const errorText = await searchResponse.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const retrievedDocs = await searchResponse.json();
@@ -172,7 +222,25 @@ ${context}`;
       });
 
       if (!response.ok) {
-        throw new Error(`Chat failed: ${response.statusText}`);
+        // Try to parse error response for detailed message
+        let errorMessage = `Chat failed: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          // If JSON parsing fails, use the response text
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        // Create error object with status code for better handling
+        const error = new Error(errorMessage) as Error & { statusCode?: number };
+        error.statusCode = response.status;
+        throw error;
       }
 
       const chatData = await response.json();
@@ -188,7 +256,19 @@ ${context}`;
       // Fetch the conversation structure
       await fetchConversation();
     } catch (e) {
-      chatError = e instanceof Error ? e.message : "Failed to send message";
+      if (e instanceof Error) {
+        chatError = e.message;
+        // If it's a quota error (429), we might want to show a special message
+        const errorWithStatus = e as Error & { statusCode?: number };
+        if (errorWithStatus.statusCode === 429) {
+          // Quota error - message already contains retry info from backend
+          console.warn("Quota exceeded:", e.message);
+        } else {
+          console.error("Chat error:", e);
+        }
+      } else {
+        chatError = "Failed to send message. Please try again.";
+      }
     } finally {
       sending = false;
     }
@@ -390,7 +470,20 @@ ${context}`;
           />
           {#if uploadError}
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              <p class="text-sm">{uploadError}</p>
+              <div class="flex items-start gap-2">
+                <span class="text-lg">⚠️</span>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold mb-1">Error</p>
+                  <p class="text-sm">{uploadError}</p>
+                </div>
+                <button
+                  onclick={() => (uploadError = null)}
+                  class="text-red-700 hover:text-red-900 text-lg font-bold"
+                  aria-label="Dismiss error"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           {/if}
         </div>
@@ -580,7 +673,25 @@ ${context}`;
 
             {#if chatError}
               <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <p class="text-sm">{chatError}</p>
+                <div class="flex items-start gap-2">
+                  <span class="text-lg">⚠️</span>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold mb-1">Error</p>
+                    <p class="text-sm">{chatError}</p>
+                    {#if chatError.includes("quota") || chatError.includes("Quota")}
+                      <p class="text-xs mt-2 text-red-600">
+                        💡 Tip: The free tier has a daily limit. You can wait for the quota to reset or upgrade your plan.
+                      </p>
+                    {/if}
+                  </div>
+                  <button
+                    onclick={() => (chatError = null)}
+                    class="text-red-700 hover:text-red-900 text-lg font-bold"
+                    aria-label="Dismiss error"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             {/if}
 

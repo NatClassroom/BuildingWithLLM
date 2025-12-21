@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import google.genai as genai
+from google.genai import errors as genai_errors
 import os
 from dotenv import load_dotenv
 
@@ -361,7 +362,7 @@ async def search_documents(search: SearchRequest, db: AsyncSession = Depends(get
 
 
 @app.post("/api/chat", response_model=ChatMessage)
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(request: ChatRequest):
     """
     Stateless chat endpoint - frontend controls the full conversation structure.
     This endpoint simply passes through what the frontend sends to the LLM.
@@ -384,9 +385,13 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
 
     # Generate response using Gemini - pass through exactly what frontend sent
     try:
+        # If contents is a single item, use it directly; otherwise use the list
+        # This matches the API format from the examples
+        contents_param = contents[0] if len(contents) == 1 else contents
+
         response = genai_client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=contents,
+            contents=contents_param,
             config=config if config else None,
         )
 
@@ -410,10 +415,44 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             retrieved_docs=None,  # Frontend controls this
             full_prompt=full_prompt,
         )
+    except genai_errors.ClientError as e:
+        # Handle Google API client errors (quota, authentication, etc.)
+        error_str = str(e)
+
+        # Check if this is a quota/rate limit error (429)
+        if hasattr(e, "status_code") and e.status_code == 429:
+            # Extract retry delay if available
+            retry_delay = None
+            if "retry in" in error_str.lower():
+                import re
+
+                match = re.search(r"retry in ([\d.]+)s", error_str.lower())
+                if match:
+                    retry_delay = float(match.group(1))
+
+            error_message = "API quota exceeded. You've reached the free tier limit (20 requests per day)."
+            if retry_delay:
+                error_message += f" Please retry in {int(retry_delay)} seconds."
+            else:
+                error_message += " Please try again later or check your billing plan."
+
+            print(f"QUOTA ERROR in /api/chat: {error_str}")
+            raise HTTPException(status_code=429, detail=error_message)
+
+        # For other client errors, return appropriate status code
+        status_code = getattr(e, "status_code", 500)
+        error_details = f"API error: {error_str}"
+        print(f"API ERROR in /api/chat: {error_details}")
+        raise HTTPException(status_code=status_code, detail=error_details)
+
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating response: {str(e)}"
-        )
+        import traceback
+
+        # For other errors, return 500 with detailed message
+        error_details = f"Error generating response: {str(e)}"
+        print(f"ERROR in /api/chat: {error_details}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=error_details)
 
 
 @app.post("/api/conversation", response_model=ConversationResponse)
@@ -464,4 +503,4 @@ Augmented System Instruction:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000)
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
