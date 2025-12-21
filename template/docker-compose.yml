@@ -1,0 +1,24 @@
+networks:
+  network_bridge:
+    driver: bridge
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: always
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./dockers/postgres/db-data:/var/lib/postgresql/data/
+
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: pass123
+      POSTGRES_DB: llm
+    networks:
+      - network_bridge
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
