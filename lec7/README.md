@@ -30,13 +30,13 @@ python lec7/tfidf_retrieval.py
 
 ### 2. `hybrid_search_reranking.py` - Hybrid Search with Reranking
 
-Demonstrates hybrid search combining sparse (TF-IDF) and dense embeddings, followed by reranking.
+Demonstrates hybrid search combining sparse (TF-IDF) and dense embeddings (Gemini), followed by reranking.
 
 **Features:**
 
-- Combines sparse (TF-IDF) and dense (semantic) embeddings
+- Combines sparse (TF-IDF) and dense (Gemini) embeddings
 - Shows how different retrieval methods complement each other
-- Demonstrates reranking with more sophisticated models
+- Demonstrates reranking with Gemini embeddings
 - Two-stage approach: retrieval + reranking
 
 **Usage:**
@@ -48,9 +48,9 @@ python lec7/hybrid_search_reranking.py
 **What it does:**
 
 1. **Sparse Retrieval**: Shows TF-IDF results (good for keyword matching)
-2. **Dense Retrieval**: Shows semantic embedding results (good for understanding)
+2. **Dense Retrieval**: Shows Gemini embedding results (good for semantic understanding)
 3. **Hybrid Search**: Combines both methods with weighted scores
-4. **Reranking**: Uses a more sophisticated model to refine top candidates
+4. **Reranking**: Uses Gemini embeddings to refine top candidates
 
 ## Installation
 
@@ -60,11 +60,25 @@ The scripts require the following dependencies:
 # Core dependencies (likely already installed)
 pip install numpy scikit-learn
 
-# For dense embeddings (optional but recommended)
-pip install sentence-transformers
+# For Gemini embeddings (required for hybrid_search_reranking.py)
+# The google-genai package should already be in pyproject.toml
 ```
 
-If `sentence-transformers` is not available, the hybrid search script will use a fallback method, but results will be less accurate.
+**Environment Setup:**
+
+Set your Gemini API key as an environment variable:
+
+```bash
+export GEMINI_API_KEY=your_google_api_key_here
+```
+
+Or create a `.env` file in the project root:
+
+```
+GEMINI_API_KEY=your_google_api_key_here
+```
+
+The hybrid search script requires the `GEMINI_API_KEY` to be set, as it uses Gemini's `text-embedding-004` model for dense embeddings.
 
 ## Key Concepts
 
@@ -75,12 +89,13 @@ If `sentence-transformers` is not available, the hybrid search script will use a
 - **Fast**: Efficient for large vocabularies
 - **Traditional**: Well-established method
 
-### Dense Embeddings
+### Dense Embeddings (Gemini)
 
 - **Dense**: Most/all values are non-zero
 - **Semantic**: Understands meaning and synonyms
 - **Context-aware**: Captures relationships between words
-- **Modern**: Uses neural network models
+- **Modern**: Uses neural network models (Gemini text-embedding-004)
+- **API-based**: Uses Google's Gemini API for embedding generation
 
 ### Hybrid Search
 
@@ -94,7 +109,8 @@ If `sentence-transformers` is not available, the hybrid search script will use a
 - Two-stage retrieval process
 - Stage 1: Fast retrieval (hybrid search) to get candidates
 - Stage 2: Slower but more accurate reranking of top candidates
-- Uses more sophisticated models (e.g., cross-encoders)
+- Uses Gemini embeddings to rerank candidates
+- In production, you might use cross-encoders for even better results
 - Common in production search systems
 
 ## Example Output
