@@ -1,5 +1,5 @@
-# TOPIC: Agentic Loop
-# Agent keeps calling tools until the task is complete (manual control)
+# TOPIC: Agentic Loop with Finish Reason
+# Use finish_reason to control when the agent stops
 
 from google import genai
 from google.genai import types
@@ -18,7 +18,6 @@ def search(query: str) -> dict:
     Args:
         query: Search query
     """
-    # Fake search results
     results = {
         "python creator": "Python was created by Guido van Rossum in 1991.",
         "python features": "Python features: dynamic typing, garbage collection, multi-paradigm.",
@@ -40,20 +39,11 @@ def take_notes(note: str) -> dict:
     return {"status": "saved", "total_notes": len(notes)}
 
 
-def finish(summary: str) -> dict:
-    """Signal that research is complete.
-
-    Args:
-        summary: Final summary of findings
-    """
-    return {"done": True, "summary": summary}
-
-
 # Storage
 notes = []
 
 # Tool declarations with auto-calling disabled so we control the loop
-tools = [search, take_notes, finish]
+tools = [search, take_notes]
 config = types.GenerateContentConfig(
     tools=tools,
     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
@@ -63,46 +53,61 @@ config = types.GenerateContentConfig(
 messages = [
     types.Content(
         role="user",
-        parts=[types.Part(text="Research who created Python and summarize your findings. Use search, take notes, then finish.")],
+        parts=[types.Part(text="Research who created Python. Search for info, take notes, then give me a summary.")],
     )
 ]
 
 print("Starting agentic loop...\n")
 
-# Agentic loop - keep going until agent calls "finish"
-for step in range(10):  # Max 10 steps
+# Agentic loop - use finish_reason to know when to stop
+for step in range(10):  # Max 10 steps as safety limit
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=messages,
         config=config,
     )
 
-    # Check if model wants to call a function
-    part = response.candidates[0].content.parts[0]
+    candidate = response.candidates[0]
+    finish_reason = candidate.finish_reason
 
-    if hasattr(part, "function_call") and part.function_call:
-        fc = part.function_call
-        print(f"Step {step + 1}: Calling {fc.name}({fc.args})")
+    print(f"Step {step + 1}: finish_reason = {finish_reason}")
 
-        # Execute the function
-        func = {"search": search, "take_notes": take_notes, "finish": finish}[fc.name]
-        result = func(**fc.args)
-        print(f"         Result: {result}\n")
+    # Check finish_reason to decide what to do
+    # STOP = model is done, no more tool calls
+    # Other reasons (like MAX_TOKENS, SAFETY) might need handling too
 
-        # Add to conversation
-        messages.append(response.candidates[0].content)
-        messages.append(
-            types.Content(
-                role="user",
-                parts=[types.Part.from_function_response(name=fc.name, response=result)],
+    if finish_reason == "STOP":
+        # Model finished - check if it called a tool or gave final answer
+        part = candidate.content.parts[0]
+
+        if hasattr(part, "function_call") and part.function_call:
+            # Model wants to call a function
+            fc = part.function_call
+            print(f"         Tool call: {fc.name}({fc.args})")
+
+            # Execute the function
+            func = {"search": search, "take_notes": take_notes}[fc.name]
+            result = func(**fc.args)
+            print(f"         Result: {result}\n")
+
+            # Add to conversation and continue
+            messages.append(candidate.content)
+            messages.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part.from_function_response(name=fc.name, response=result)],
+                )
             )
-        )
-
-        # Check if done
-        if fc.name == "finish":
-            print("Agent finished!")
-            print(f"Notes collected: {notes}")
+        else:
+            # Model gave a text response - we're done!
+            print(f"\n{'='*50}")
+            print("AGENT COMPLETE (finish_reason=STOP, no tool call)")
+            print(f"{'='*50}")
+            print(f"Final response: {response.text}")
+            print(f"\nNotes collected: {notes}")
             break
     else:
-        print(f"Final response: {response.text}")
+        # Handle other finish reasons
+        print(f"Unexpected finish_reason: {finish_reason}")
+        print(f"Response: {response.text}")
         break
