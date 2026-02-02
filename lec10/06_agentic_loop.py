@@ -1,6 +1,16 @@
 # TOPIC: Agentic Loop with Finish Reason
 # Use finish_reason to control when the agent stops
 
+# KEY DIFFERENCE: OpenAI vs Gemini
+# ================================
+# OpenAI:  finish_reason = "tool_calls" → model wants to call a tool
+#          finish_reason = "stop"       → model is done
+#
+# Gemini:  finish_reason = "STOP" for BOTH cases!
+#          You must check if response contains function_call parts
+#          - Has function_call → execute tool, continue loop
+#          - No function_call  → model is done, exit loop
+
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -11,7 +21,6 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-# Simulated tools for a research agent
 def search(query: str) -> dict:
     """Search for information.
 
@@ -39,17 +48,14 @@ def take_notes(note: str) -> dict:
     return {"status": "saved", "total_notes": len(notes)}
 
 
-# Storage
 notes = []
 
-# Tool declarations with auto-calling disabled so we control the loop
 tools = [search, take_notes]
 config = types.GenerateContentConfig(
     tools=tools,
     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
 )
 
-# Initial request
 messages = [
     types.Content(
         role="user",
@@ -59,8 +65,7 @@ messages = [
 
 print("Starting agentic loop...\n")
 
-# Agentic loop - use finish_reason to know when to stop
-for step in range(10):  # Max 10 steps as safety limit
+for step in range(10):
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=messages,
@@ -70,27 +75,28 @@ for step in range(10):  # Max 10 steps as safety limit
     candidate = response.candidates[0]
     finish_reason = candidate.finish_reason
 
+    # Gemini finish_reason values:
+    # - STOP: Normal completion (could be text OR tool call!)
+    # - MAX_TOKENS: Hit token limit
+    # - SAFETY: Blocked for safety
+    # - MALFORMED_FUNCTION_CALL: Tool call couldn't be parsed
+
     print(f"Step {step + 1}: finish_reason = {finish_reason}")
 
-    # Check finish_reason to decide what to do
-    # STOP = model is done, no more tool calls
-    # Other reasons (like MAX_TOKENS, SAFETY) might need handling too
-
     if finish_reason == "STOP":
-        # Model finished - check if it called a tool or gave final answer
+        # STOP means model finished, but we need to check WHAT it produced
         part = candidate.content.parts[0]
+        has_function_call = hasattr(part, "function_call") and part.function_call
 
-        if hasattr(part, "function_call") and part.function_call:
-            # Model wants to call a function
+        if has_function_call:
+            # Model wants to call a tool (unlike OpenAI, no special finish_reason)
             fc = part.function_call
-            print(f"         Tool call: {fc.name}({fc.args})")
+            print(f"         → Tool call: {fc.name}({fc.args})")
 
-            # Execute the function
             func = {"search": search, "take_notes": take_notes}[fc.name]
             result = func(**fc.args)
-            print(f"         Result: {result}\n")
+            print(f"         → Result: {result}\n")
 
-            # Add to conversation and continue
             messages.append(candidate.content)
             messages.append(
                 types.Content(
@@ -99,15 +105,19 @@ for step in range(10):  # Max 10 steps as safety limit
                 )
             )
         else:
-            # Model gave a text response - we're done!
-            print(f"\n{'='*50}")
-            print("AGENT COMPLETE (finish_reason=STOP, no tool call)")
+            # Model produced text response - we're done
+            print(f"         → Text response (no tool call)\n")
             print(f"{'='*50}")
-            print(f"Final response: {response.text}")
-            print(f"\nNotes collected: {notes}")
+            print(f"AGENT COMPLETE")
+            print(f"{'='*50}")
+            print(f"Response: {response.text}")
+            print(f"\nNotes: {notes}")
             break
+
+    elif finish_reason == "MALFORMED_FUNCTION_CALL":
+        print("Error: Model tried to call a function but it was malformed")
+        break
+
     else:
-        # Handle other finish reasons
-        print(f"Unexpected finish_reason: {finish_reason}")
-        print(f"Response: {response.text}")
+        print(f"Stopped due to: {finish_reason}")
         break
