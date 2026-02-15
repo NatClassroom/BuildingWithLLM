@@ -12,4 +12,6 @@ dependencies = [
     "greenlet==3.3.0",
     "pgvector>=0.3.0",
     "matplotlib>=3.8.0",
+    "playwright>=1.40.0",
+    "requests>=2.31.0",
 ]
