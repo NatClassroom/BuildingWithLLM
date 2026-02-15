@@ -24,6 +24,8 @@ from playwright.async_api import async_playwright
 
 load_dotenv()
 
+RESULTS_DIR = Path(__file__).parent / "results"
+
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -91,9 +93,9 @@ async def demo_page_understanding():
 
     print("[1] Capturing screenshot of Hacker News...")
     screenshot = await capture_screenshot(
-        "https://news.ycombinator.com", "hn_screenshot.png"
+        "https://news.ycombinator.com", RESULTS_DIR / "hn_screenshot.png"
     )
-    print(f"    Screenshot saved to hn_screenshot.png")
+    print(f"    Screenshot saved to results/hn_screenshot.png")
 
     print("\n[2] Asking Gemini to describe the page...")
     description = analyze_screenshot_with_gemini(
@@ -117,9 +119,9 @@ async def demo_navigation_decision():
 
     print("\n[4] Capturing screenshot of Wikipedia main page...")
     screenshot = await capture_screenshot(
-        "https://en.wikipedia.org/wiki/Main_Page", "wiki_screenshot.png"
+        "https://en.wikipedia.org/wiki/Main_Page", RESULTS_DIR / "wiki_screenshot.png"
     )
-    print(f"    Screenshot saved to wiki_screenshot.png")
+    print(f"    Screenshot saved to results/wiki_screenshot.png")
 
     print("\n[5] Asking Gemini what actions are possible...")
     actions = analyze_screenshot_with_gemini(
@@ -137,9 +139,9 @@ async def demo_form_understanding():
 
     print("\n[6] Capturing screenshot of a form...")
     screenshot = await capture_screenshot(
-        "https://httpbin.org/forms/post", "form_screenshot.png"
+        "https://httpbin.org/forms/post", RESULTS_DIR / "form_screenshot.png"
     )
-    print(f"    Screenshot saved to form_screenshot.png")
+    print(f"    Screenshot saved to results/form_screenshot.png")
 
     print("\n[7] Asking Gemini to understand the form...")
     form_analysis = analyze_screenshot_with_gemini(
@@ -161,12 +163,6 @@ async def main():
     await demo_page_understanding()
     await demo_navigation_decision()
     await demo_form_understanding()
-
-    # Cleanup screenshots
-    for f in ["hn_screenshot.png", "wiki_screenshot.png", "form_screenshot.png"]:
-        if Path(f).exists():
-            Path(f).unlink()
-            print(f"\nCleaned up {f}")
 
     print("\n" + "=" * 60)
     print("Demo completed!")
