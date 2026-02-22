@@ -54,7 +54,7 @@ async def run_agent():
     # Step 1: Connect to MCP server
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", "python", "lec13/02_mcp_server.py"],
+        args=["run", "python", "lec13/02_mcp_server.py", "--stdio"],
     )
 
     async with AsyncExitStack() as stack:
