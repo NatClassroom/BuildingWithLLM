@@ -69,6 +69,7 @@ class Skill:
             system_instruction=system_prompt,
             tools=tools,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         )
 
     def __repr__(self):
@@ -154,6 +155,10 @@ def execute_skill(skill: Skill, user_query: str) -> str:
         )
 
         candidate = response.candidates[0]
+        if not candidate.content or not candidate.content.parts:
+            # Model returned empty content (e.g., safety filter or thinking)
+            return response.text if response.text else "No response generated."
+
         parts = candidate.content.parts
         function_calls = [p for p in parts if hasattr(p, "function_call") and p.function_call]
 
