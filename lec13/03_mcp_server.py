@@ -8,8 +8,8 @@
 #   1. stdio transport  — clients launch this as a subprocess
 #   2. SSE transport    — runs as an HTTP server, clients connect over the network
 #
-# Run demo:    uv run python lec13/02_mcp_server.py
-# Run as HTTP: uv run python lec13/02_mcp_server.py --sse
+# Run demo:    uv run python lec13/03_mcp_server.py
+# Run as HTTP: uv run python lec13/03_mcp_server.py --sse
 #
 # Setup: uv add "mcp>=1.0.0"
 
@@ -79,7 +79,7 @@ async def demo():
 
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", "python", "lec13/02_mcp_server.py", "--stdio"],
+        args=["run", "python", "lec13/03_mcp_server.py", "--stdio"],
     )
 
     async with AsyncExitStack() as stack:

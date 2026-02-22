@@ -1,11 +1,11 @@
 # TOPIC: MCP Client — Connecting LLM Agent to MCP Tools
-# This script connects to the MCP server (02_mcp_server.py),
+# This script connects to the MCP server (03_mcp_server.py),
 # discovers its tools at runtime, and lets a Gemini agent use them.
 #
 # Key idea: tools are NOT hardcoded — they're discovered via MCP protocol.
 # Any MCP server can be plugged in without changing client code.
 #
-# Run: uv run python lec13/03_mcp_client.py
+# Run: uv run python lec13/04_mcp_client.py
 
 from google import genai
 from google.genai import types
@@ -54,7 +54,7 @@ async def run_agent():
     # Step 1: Connect to MCP server
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", "python", "lec13/02_mcp_server.py", "--stdio"],
+        args=["run", "python", "lec13/03_mcp_server.py", "--stdio"],
     )
 
     async with AsyncExitStack() as stack:

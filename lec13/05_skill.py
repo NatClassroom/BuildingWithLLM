@@ -5,7 +5,7 @@
 #
 # Skill = system prompt + tools + execution logic
 #
-# Run: uv run python lec13/04_skill.py
+# Run: uv run python lec13/05_skill.py
 
 from google import genai
 from google.genai import types
